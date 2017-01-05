@@ -3,6 +3,7 @@
 #include "spin1_api.h"
 #include "ordered_covering.h"
 #include "remove_default_routes.h"
+#include <debug.h>
 
 /*****************************************************************************/
 /* SpiNNaker routing table minimisation.
@@ -32,7 +33,7 @@ typedef struct
   // to load routing entries with the same application ID that was used to load
   // this application.
   uint32_t app_id;
-
+  uint32_t compress_only_when_needed; //flag for compressing when only needed
   uint32_t flags;       // Currently there are no flags
   uint32_t table_size;  // Initial size of the routing table.
   entry_t entries[];    // Routing table entries
@@ -122,58 +123,86 @@ int compare_rte(const void *va, const void *vb)
 /*****************************************************************************/
 void c_main(void)
 {
+  log_info("Starting on chip router compressor");
+
   // Prepare to minimise the routing tables
   header_t *header = (header_t *) sark_tag_ptr(1, 0);
 
   // Load the routing table
   table_t table;
+
+  log_info("start reading header");
   read_table(&table, header);
+  log_info("finished reading header");
+
+  log_info(
+      "header flags are: app_id = %d \n compress_only_when_needed = %d \n"
+      "flags = %d \n table_size = %d \n",
+      header->app_id, header->compress_only_when_needed, header->flags,
+      header->table_size);
 
   // Store intermediate sizes for later reporting (if we fail to minimise)
   uint32_t size_original, size_rde, size_oc;
   size_original = table.size;
 
   // Try to load the table
-  if (!load_routing_table(&table, header->app_id))
+  log_info("check if compression is needed and compress if needed");
+  if ((header->compress_only_when_needed == 1 &&
+          !load_routing_table(&table, header->app_id)) ||
+       header->compress_only_when_needed == 0)
   {
     // Otherwise remove default routes.
+    log_info("remove default routes from minimiser");
     remove_default_routes_minimise(&table);
     size_rde = table.size;
 
     // Try to load the table
-    if (!load_routing_table(&table, header->app_id))
+    log_info("check if compression is needed and try with no defaults");
+    if ((header->compress_only_when_needed == 1 &&
+            !load_routing_table(&table, header->app_id)) ||
+         header->compress_only_when_needed == 0)
     {
       // Try to use Ordered Covering the minimise the table. This requires
       // that the table be reloaded from memory and that it be sorted in
       // ascending order of generality.
+
+      log_info("free the tables entries");
       FREE(table.entries);
       read_table(&table, header);
+
+      log_info("do qsort");
       qsort(table.entries, table.size, sizeof(entry_t), compare_rte);
 
       // Get the target length of the routing table
+      log_info("acquire available number of entries");
       uint32_t target_length = rtr_alloc_max();
 
       // Perform the minimisation
+      log_info("minimise");
       aliases_t aliases = aliases_init();
       oc_minimise(&table, target_length, &aliases);
       size_oc = table.size;
 
+      // report size to the host for provenance aspects
+      log_info("has compressed the router table to %d entries", size_oc);
+
       // Clean up the memory used by the aliases table
+      log_info("clear up aliases");
       aliases_clear(&aliases);
 
       // Try to load the routing table
+      log_info("try loading tables");
       if (!load_routing_table(&table, header->app_id))
       {
         // Otherwise give up and exit with a runtime error
-        io_printf(
-          IO_BUF, "Failed to minimise routing table to fit %u entries.\n"
-                  "(Original table: %u\n",
-                  " after removing default entries: %u\n,"
-                  " after Ordered Covering: %u).\n",
-          size_original, size_rde, size_oc
-        );
+        log_error(
+            "Failed to minimise routing table to fit %u entries.\n"
+            "(Original table: %u\n after removing default entries: %u\n"
+            " after Ordered Covering: %u).\n",
+            size_original, size_rde, size_oc);
 
         // Free the block of SDRAM used to load the routing table.
+        log_info("free sdram blocks which held router tables");
         sark_xfree(sv->sdram_heap, (void *) header, ALLOC_LOCK);
 
         // Raise the runtime error
@@ -183,9 +212,12 @@ void c_main(void)
   }
 
   // Free the memory used by the routing table.
+  log_info("free sdram blocks which held router tables");
   FREE(table.entries);
 
   // Free the block of SDRAM used to load the routing table.
   sark_xfree(sv->sdram_heap, (void *) header, ALLOC_LOCK);
+
+  log_info("completed router compressor");
 }
 /*****************************************************************************/
