@@ -33,10 +33,17 @@ typedef struct
   // to load routing entries with the same application ID that was used to load
   // this application.
   uint32_t app_id;
-  uint32_t compress_only_when_needed; //flag for compressing when only needed
-  uint32_t flags;       // Currently there are no flags
-  uint32_t table_size;  // Initial size of the routing table.
-  entry_t entries[];    // Routing table entries
+   //flag for compressing when only needed
+  uint32_t compress_only_when_needed;
+  // flag that uses the available entries of the router table instead of
+  //compressing as much as possible.
+  uint32_t compress_as_much_as_possible;
+  // Currently there are no flags
+  uint32_t flags;
+  // Initial size of the routing table.
+  uint32_t table_size;
+  // Routing table entries
+  entry_t entries[];
 } header_t;
 
 /* entry_t is defined as:
@@ -136,10 +143,10 @@ void c_main(void)
   log_info("finished reading header");
 
   log_info(
-      "header flags are: app_id = %d \n compress_only_when_needed = %d \n"
-      "flags = %d \n table_size = %d \n",
-      header->app_id, header->compress_only_when_needed, header->flags,
-      header->table_size);
+      "header flags are: app_id = %d \n compress_only_when_needed = %d \n "
+      "compress_as_much_as_possible = %d \n flags = %d \n table_size = %d \n",
+      header->app_id, header->compress_only_when_needed,
+      header->compress_as_much_as_possible, header->flags, header->table_size);
 
   // Store intermediate sizes for later reporting (if we fail to minimise)
   uint32_t size_original, size_rde, size_oc;
@@ -174,8 +181,12 @@ void c_main(void)
       qsort(table.entries, table.size, sizeof(entry_t), compare_rte);
 
       // Get the target length of the routing table
-      log_info("acquire available number of entries");
-      uint32_t target_length = rtr_alloc_max();
+      log_info("acquire target length");
+      uint32_t target_length = 0;
+      if(header->compress_as_much_as_possible == 0){
+          target_length = rtr_alloc_max();
+      }
+      log_info("target length of %d", target_length);
 
       // Perform the minimisation
       log_info("minimise");
