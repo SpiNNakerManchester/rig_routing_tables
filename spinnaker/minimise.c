@@ -4,7 +4,6 @@
 #include "ordered_covering.h"
 #include "remove_default_routes.h"
 #include <debug.h>
-
 /*****************************************************************************/
 /* SpiNNaker routing table minimisation.
  *
@@ -69,6 +68,18 @@ typedef struct
  * NOTE: The block of memory containing the header and initial routing table
  * will be freed on exit by this application.
  */
+
+void print_header(header_t *header){
+      log_info(
+          "header flags are: app_id = %d \n compress_only_when_needed = %d "
+          "\n compress_as_much_as_possible = %d \n flags = %d \n table_size"
+          " = %d \n",
+          header->app_id, header->compress_only_when_needed,
+          header->compress_as_much_as_possible, header->flags,
+          header->table_size);
+}
+
+
 /*****************************************************************************/
 
 /*****************************************************************************/
@@ -142,11 +153,7 @@ void c_main(void)
   read_table(&table, header);
   log_info("finished reading header");
 
-  log_info(
-      "header flags are: app_id = %d \n compress_only_when_needed = %d \n "
-      "compress_as_much_as_possible = %d \n flags = %d \n table_size = %d \n",
-      header->app_id, header->compress_only_when_needed,
-      header->compress_as_much_as_possible, header->flags, header->table_size);
+  print_header(header);
 
   // Store intermediate sizes for later reporting (if we fail to minimise)
   uint32_t size_original, size_rde, size_oc;
@@ -174,7 +181,6 @@ void c_main(void)
       // ascending order of generality.
 
       log_info("free the tables entries");
-      FREE(table.entries);
       read_table(&table, header);
 
       log_info("do qsort");
@@ -189,9 +195,10 @@ void c_main(void)
       log_info("target length of %d", target_length);
 
       // Perform the minimisation
-      log_info("minimise");
       aliases_t aliases = aliases_init();
+      log_info("minimise");
       oc_minimise(&table, target_length, &aliases);
+      log_info("done minimise");
       size_oc = table.size;
 
       // report size to the host for provenance aspects
@@ -207,10 +214,9 @@ void c_main(void)
       {
         // Otherwise give up and exit with a runtime error
         log_error(
-            "Failed to minimise routing table to fit %u entries.\n"
-            "(Original table: %u\n after removing default entries: %u\n"
-            " after Ordered Covering: %u).\n",
-            size_original, size_rde, size_oc);
+            "Failed to minimise routing table to fit %u entries. (Original"
+            "table: %u after removing default entries: %u after Ordered"
+            "Covering: %u).", size_original, size_rde, size_oc);
 
         // Free the block of SDRAM used to load the routing table.
         log_info("free sdram blocks which held router tables");
@@ -225,7 +231,6 @@ void c_main(void)
   // Free the memory used by the routing table.
   log_info("free sdram blocks which held router tables");
   FREE(table.entries);
-
   // Free the block of SDRAM used to load the routing table.
   sark_xfree(sv->sdram_heap, (void *) header, ALLOC_LOCK);
 

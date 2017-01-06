@@ -3,13 +3,18 @@
 #ifdef SPINNAKER
   static inline void * safe_malloc(uint bytes)
   {
-    void* p = spin1_malloc(bytes);
+    void* p = sark_xalloc(sv->sdram_heap, bytes, 0, ALLOC_LOCK);;
     if (p == NULL)
     {
       io_printf(IO_BUF, "Failed to malloc %u bytes.\n", bytes);
       rt_error(RTE_MALLOC);
     }
     return p;
+  }
+
+  static inline void safe_xfree(void *ptr){
+    io_printf(IO_BUF, "free\n");
+    sark_xfree(sv->sdram_heap, ptr, ALLOC_LOCK);
   }
 
   #ifdef PROFILED
@@ -21,14 +26,14 @@
     #define FREE   profiled_free
   #else
     #define MALLOC safe_malloc
-    #define FREE   sark_free
+    #define FREE   safe_xfree
   #endif
 
 #else
   #include <stdlib.h>
 
-  #define MALLOC malloc
-  #define FREE   free
+  #define MALLOC safe_malloc
+  #define FREE   safe_xfree
 #endif
 
 #define __PLATFORM_H__
