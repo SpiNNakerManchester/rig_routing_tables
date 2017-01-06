@@ -220,7 +220,7 @@ void c_main(void)
 
         // Free the block of SDRAM used to load the routing table.
         log_info("free sdram blocks which held router tables");
-        sark_xfree(sv->sdram_heap, (void *) header, ALLOC_LOCK);
+        FREE((void *) header);
 
         // Raise the runtime error
         rt_error(RTE_ABORT);

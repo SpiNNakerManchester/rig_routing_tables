@@ -3,7 +3,7 @@
 #ifdef SPINNAKER
   static inline void * safe_malloc(uint bytes)
   {
-    void* p = sark_xalloc(sv->sdram_heap, bytes, 0, ALLOC_LOCK);;
+    void* p = sark_xalloc(sv->sdram_heap, bytes, 0, ALLOC_LOCK);
     if (p == NULL)
     {
       io_printf(IO_BUF, "Failed to malloc %u bytes.\n", bytes);
@@ -13,7 +13,6 @@
   }
 
   static inline void safe_xfree(void *ptr){
-    io_printf(IO_BUF, "free\n");
     sark_xfree(sv->sdram_heap, ptr, ALLOC_LOCK);
   }
 
