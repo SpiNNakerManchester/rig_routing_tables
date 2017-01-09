@@ -140,11 +140,11 @@ int compare_rte(const void *va, const void *vb)
 void compress_start(){
   log_debug("Starting on chip router compressor");
 
-  // Get pointer to 1st virtual processor info struct in SRAM
-  vcpu_t *sark_virtual_processor_info = (vcpu_t*) SV_VCPU;
-
   // Prepare to minimise the routing tables
   header_t *header = (header_t *) sark_tag_ptr(1, 0);
+
+  // set the flag to something none useful
+  sark.vcpu->user0 = 20;
 
   // Load the routing table
   table_t table;
@@ -223,7 +223,8 @@ void compress_start(){
         FREE((void *) header);
 
         // set the failed flag and exit
-        sark_virtual_processor_info[spin1_get_core_id()].user0 = 1;
+        sark.vcpu->user0 = 1;
+        log_info("address is %08x", &(sark.vcpu->user0));
         spin1_exit(0);
       }
     }
@@ -236,7 +237,7 @@ void compress_start(){
   sark_xfree(sv->sdram_heap, (void *) header, ALLOC_LOCK);
 
   log_debug("completed router compressor");
-  sark_virtual_processor_info[spin1_get_core_id()].user0 = 0;
+  sark.vcpu->user0 = 0;
   spin1_exit(0);
 }
 
