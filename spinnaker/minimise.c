@@ -229,16 +229,17 @@ void compress_start(){
       }
     }
   }
+  else{
+    // Free the memory used by the routing table.
+    log_debug("free sdram blocks which held router tables");
+    FREE(table.entries);
+    // Free the block of SDRAM used to load the routing table.
+    sark_xfree(sv->sdram_heap, (void *) header, ALLOC_LOCK);
 
-  // Free the memory used by the routing table.
-  log_debug("free sdram blocks which held router tables");
-  FREE(table.entries);
-  // Free the block of SDRAM used to load the routing table.
-  sark_xfree(sv->sdram_heap, (void *) header, ALLOC_LOCK);
-
-  log_debug("completed router compressor");
-  sark.vcpu->user0 = 0;
-  spin1_exit(0);
+    log_debug("completed router compressor");
+    sark.vcpu->user0 = 0;
+    spin1_exit(0);
+  }
 }
 
 
