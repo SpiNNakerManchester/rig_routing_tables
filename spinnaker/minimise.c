@@ -70,13 +70,13 @@ typedef struct
  */
 
 void print_header(header_t *header){
-      log_info(
-          "header flags are: app_id = %d \n compress_only_when_needed = %d "
-          "\n compress_as_much_as_possible = %d \n flags = %d \n table_size"
-          " = %d \n",
-          header->app_id, header->compress_only_when_needed,
-          header->compress_as_much_as_possible, header->flags,
-          header->table_size);
+    log_debug(
+        "header flags are: app_id = %d \n compress_only_when_needed = %d "
+        "\n compress_as_much_as_possible = %d \n flags = %d \n table_size"
+        " = %d \n",
+        header->app_id, header->compress_only_when_needed,
+        header->compress_as_much_as_possible, header->flags,
+        header->table_size);
 }
 
 
@@ -136,12 +136,12 @@ int compare_rte(const void *va, const void *vb)
   // Perform the comparison
   return ((int) keymask_count_xs(a)) - ((int) keymask_count_xs(b));
 }
-/*****************************************************************************/
 
-/*****************************************************************************/
-void c_main(void)
-{
-  log_info("Starting on chip router compressor");
+void compress_start(){
+  log_debug("Starting on chip router compressor");
+
+  // Get pointer to 1st virtual processor info struct in SRAM
+  vcpu_t *sark_virtual_processor_info = (vcpu_t*) SV_VCPU;
 
   // Prepare to minimise the routing tables
   header_t *header = (header_t *) sark_tag_ptr(1, 0);
@@ -149,9 +149,9 @@ void c_main(void)
   // Load the routing table
   table_t table;
 
-  log_info("start reading header");
+  log_debug("start reading header");
   read_table(&table, header);
-  log_info("finished reading header");
+  log_debug("finished reading header");
 
   print_header(header);
 
@@ -160,18 +160,18 @@ void c_main(void)
   size_original = table.size;
 
   // Try to load the table
-  log_info("check if compression is needed and compress if needed");
+  log_debug("check if compression is needed and compress if needed");
   if ((header->compress_only_when_needed == 1 &&
           !load_routing_table(&table, header->app_id)) ||
        header->compress_only_when_needed == 0)
   {
     // Otherwise remove default routes.
-    log_info("remove default routes from minimiser");
+    log_debug("remove default routes from minimiser");
     remove_default_routes_minimise(&table);
     size_rde = table.size;
 
     // Try to load the table
-    log_info("check if compression is needed and try with no defaults");
+    log_debug("check if compression is needed and try with no defaults");
     if ((header->compress_only_when_needed == 1 &&
             !load_routing_table(&table, header->app_id)) ||
          header->compress_only_when_needed == 0)
@@ -180,36 +180,36 @@ void c_main(void)
       // that the table be reloaded from memory and that it be sorted in
       // ascending order of generality.
 
-      log_info("free the tables entries");
+      log_debug("free the tables entries");
       read_table(&table, header);
 
-      log_info("do qsort");
+      log_debug("do qsort");
       qsort(table.entries, table.size, sizeof(entry_t), compare_rte);
 
       // Get the target length of the routing table
-      log_info("acquire target length");
+      log_debug("acquire target length");
       uint32_t target_length = 0;
       if(header->compress_as_much_as_possible == 0){
           target_length = rtr_alloc_max();
       }
-      log_info("target length of %d", target_length);
+      log_debug("target length of %d", target_length);
 
       // Perform the minimisation
       aliases_t aliases = aliases_init();
-      log_info("minimise");
+      log_debug("minimise");
       oc_minimise(&table, target_length, &aliases);
-      log_info("done minimise");
+      log_debug("done minimise");
       size_oc = table.size;
 
       // report size to the host for provenance aspects
-      log_info("has compressed the router table to %d entries", size_oc);
+      log_debug("has compressed the router table to %d entries", size_oc);
 
       // Clean up the memory used by the aliases table
-      log_info("clear up aliases");
+      log_debug("clear up aliases");
       aliases_clear(&aliases);
 
       // Try to load the routing table
-      log_info("try loading tables");
+      log_debug("try loading tables");
       if (!load_routing_table(&table, header->app_id))
       {
         // Otherwise give up and exit with a runtime error
@@ -219,21 +219,37 @@ void c_main(void)
             "Covering: %u).", size_original, size_rde, size_oc);
 
         // Free the block of SDRAM used to load the routing table.
-        log_info("free sdram blocks which held router tables");
+        log_debug("free sdram blocks which held router tables");
         FREE((void *) header);
 
         // Raise the runtime error
-        rt_error(RTE_ABORT);
+        sark_virtual_processor_info[spin1_get_core_id()].user0 = 1;
+        spin1_exit(0);
       }
     }
   }
 
   // Free the memory used by the routing table.
-  log_info("free sdram blocks which held router tables");
+  log_debug("free sdram blocks which held router tables");
   FREE(table.entries);
   // Free the block of SDRAM used to load the routing table.
   sark_xfree(sv->sdram_heap, (void *) header, ALLOC_LOCK);
 
-  log_info("completed router compressor");
+  log_debug("completed router compressor");
+  sark_virtual_processor_info[spin1_get_core_id()].user0 = 0;
+  spin1_exit(0);
+}
+
+
+/*****************************************************************************/
+
+/*****************************************************************************/
+void c_main(void)
+{
+  // kick-start the process
+  spin1_schedule_callback(compress_start, 0, 0, 3);
+
+  // go
+  spin1_start (SYNC_NOWAIT);	//##
 }
 /*****************************************************************************/
