@@ -222,7 +222,7 @@ void compress_start(){
         log_debug("free sdram blocks which held router tables");
         FREE((void *) header);
 
-        // Raise the runtime error
+        // set the failed flag and exit
         sark_virtual_processor_info[spin1_get_core_id()].user0 = 1;
         spin1_exit(0);
       }
