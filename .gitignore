@@ -6,4 +6,5 @@ tests/tests
 *.swp
 *.aplx
 *.elf
+*.idea
 spinnaker/sark_build.c
