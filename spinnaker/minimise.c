@@ -30,9 +30,6 @@ typedef struct {
     //compressing as much as possible.
     uint32_t compress_as_much_as_possible;
 
-    // Currently there are no flags
-    uint32_t flags;
-
     // Initial size of the routing table.
     uint32_t table_size;
 
@@ -67,12 +64,14 @@ typedef struct {
 //! \brief prints the header object for debug purposes
 //! \param[in] header: the header to print
 void print_header(header_t *header) {
+    log_info("app_id = %d", header->app_id);
     log_info(
-        "header flags are: app_id = %d \n compress_only_when_needed = %d "
-        "\n compress_as_much_as_possible = %d \n flags = %d \n table_size"
-        " = %d \n", header->app_id, header->compress_only_when_needed,
-        header->compress_as_much_as_possible, header->flags,
-        header->table_size);
+        "compress_only_when_needed = %d",
+        header->compress_only_when_needed);
+    log_info(
+        "compress_as_much_as_possible = %d",
+        header->compress_as_much_as_possible);
+    log_info("table_size = %d", header->table_size);
 }
 
 //! \brief Read a new copy of the routing table from SDRAM.
@@ -194,6 +193,7 @@ void compress_start() {
             // be sorted in ascending order of generality.
 
             log_debug("free the tables entries");
+            FREE(table.entries);
             read_table(&table, header);
 
             log_debug("do qsort");
@@ -224,7 +224,8 @@ void compress_start() {
             // Try to load the routing table
             log_debug("try loading tables");
             if (!load_routing_table(&table, header->app_id)) {
-                // Otherwise give up and exit with a runtime error
+
+                // Otherwise give up and exit with an error
                 log_error("Failed to minimise routing table to fit %u entries."
                         "(Original table: %u after removing default entries: %u"
                         "after Ordered Covering: %u).", size_original, size_rde,
