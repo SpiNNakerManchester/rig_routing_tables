@@ -116,7 +116,7 @@ bool load_routing_table(table_t *table, uint32_t app_id) {
     }
 
     // Indicate we were able to allocate routing table entries.
-    return True;
+    return TRUE;
 }
 ;
 
