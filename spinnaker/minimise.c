@@ -226,10 +226,11 @@ void compress_start() {
             if (!load_routing_table(&table, header->app_id)) {
 
                 // Otherwise give up and exit with an error
-                log_error("Failed to minimise routing table to fit %u entries."
-                        "(Original table: %u after removing default entries: %u"
-                        "after Ordered Covering: %u).", size_original, size_rde,
-                        size_oc);
+                log_error(
+                    "Failed to minimise routing table to fit %u entries. "
+                    "(Original table: %u after removing default entries: %u "
+                    "after Ordered Covering: %u).",
+                    rtr_alloc_max(), size_original, size_rde, size_oc);
 
                 // Free the block of SDRAM used to load the routing table.
                 log_debug("free sdram blocks which held router tables");
