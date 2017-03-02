@@ -250,6 +250,8 @@ void compress_start() {
 
 //! \brief the main entrance.
 void c_main(void) {
+    log_info("%u bytes of free DTCM", sark_heap_max(sark.heap, 0));
+
     // kick-start the process
     spin1_schedule_callback(compress_start, 0, 0, 3);
 
