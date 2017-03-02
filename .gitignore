@@ -8,3 +8,4 @@ tests/tests
 *.elf
 *.idea
 spinnaker/sark_build.c
+/.project

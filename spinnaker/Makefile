@@ -1,10 +1,8 @@
+BUILD_DIR = build/
 APP = rt_minimise
-SOURCES = minimise.c
-BUILDDIR = build
+OBJECTS = $(BUILD_DIR)minimise.o
 
 CFLAGS += -I ../include/
-CFLAGS += -Wall -Wextra
 CFLAGS += -DSPINNAKER
-APP_DIR = ./
 
-include Makefile.common
+include $(SPINN_DIRS)/make/app.make

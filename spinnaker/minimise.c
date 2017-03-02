@@ -49,7 +49,7 @@ typedef struct
  * default routing, it can be left blank if removing default entries is not to
  * be used. Otherwise indicate which links will be used by packets expected to
  * match the specified entry.
- * 
+ *
  * NOTE: The routing table provided to this application MUST include all of the
  * entries which are expected to arrive at this router (i.e., entries which
  * could be replaced by default routing MUST be included in the table provided
@@ -151,7 +151,7 @@ void compress_start(){
     log_debug("Starting on chip router compressor");
 
     // Prepare to minimise the routing tables
-    header_t *header = (header_t *) sark_tag_ptr(1, 0);
+    header_t *header = (header_t *) sark_tag_ptr(1, sark_app_id());
 
     // set the flag to something none useful
     sark.vcpu->user0 = 20;
@@ -225,8 +225,8 @@ void compress_start(){
             {
                 // Otherwise give up and exit with a runtime error
                 log_error(
-                    "Failed to minimise routing table to fit %u entries.
-                    "(Original table: %u after removing default entries: %u
+                    "Failed to minimise routing table to fit %u entries."
+                    "(Original table: %u after removing default entries: %u"
                     "after Ordered Covering: %u).",
                      size_original, size_rde, size_oc);
 
