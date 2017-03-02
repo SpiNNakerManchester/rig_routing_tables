@@ -9,3 +9,4 @@ tests/tests
 *.idea
 spinnaker/sark_build.c
 /.project
+/.pydevproject
